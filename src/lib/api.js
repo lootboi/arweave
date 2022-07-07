@@ -1,4 +1,5 @@
-
+import Arweave from 'arweave';
+export const arweave = Arweave.init({}); 
 export const maxMessageLength = 1024;
 
 export const isWellFormattedAddress = (input) => {
@@ -16,12 +17,52 @@ export const createPostInfo = (node) => {
     height: height,
     length: node.data.size,
     timestamp: timestamp,
+    request: null,
   }
-  return postInfo;
-}
+  if (postInfo.length <= maxMessageLength) {
+     postInfo.request = arweave.api.get(`/${node.id}`, { timeout: 10000 })
+       .catch(() => { postInfo.error = 'timeout loading data' });
+       return postInfo;
+   } else {
+     postInfo.error = `message is too large (exceeds ${maxMessageLength/1024}kb)`;
+   }
+ }
 
 export const buildQuery = () => {
-  const queryObject = {}
+  const queryObject = { query: `{
+    transactions(first: 100,
+      tags: [
+        {
+          name: "App-Name",
+          values: ["PublicSquare"]
+        },
+        {
+          name: "Content-Type",
+          values: ["text/plain"]
+        }
+      ]
+    ) {
+      edges {
+        node {
+          id
+          owner {
+            address
+          }
+          data {
+            size
+          }
+          block {
+            height
+            timestamp
+          }
+          tags {
+            name,
+            value
+          }
+        }
+      }
+    }
+  }`}
   return queryObject;
 }
 
